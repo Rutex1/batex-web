@@ -978,7 +978,9 @@ body::before {
             <label for="missatge">Missatge</label>
             <textarea id="missatge" rows="4" placeholder="Explica'ns el vostre interès i qualsevol detall rellevant..."></textarea>
           </div>
-          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">Enviar sol·licitud</button>
+          <input type="text" id="_honey" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px">
+          <button type="submit" id="formSubmit" class="btn btn-primary" style="width:100%;justify-content:center">Enviar sol·licitud</button>
+          <p id="formError" hidden style="margin-top:12px;font-size:0.9rem;color:#b3261e">No s'ha pogut enviar el missatge. Torna-ho a provar o escriu-nos a <a href="mailto:info@rutex.es">info@rutex.es</a>.</p>
         </form>
         <div class="form-success" hidden id="formSuccess">
           ✓ Missatge enviat correctament.<br>
@@ -1005,10 +1007,39 @@ body::before {
 </footer>
 
 <script>
-function handleSubmit(e) {
+// Sends the request by email through FormSubmit (https://formsubmit.co)
+async function handleSubmit(e) {
   e.preventDefault();
-  document.getElementById('contactForm').hidden = true;
-  document.getElementById('formSuccess').hidden = false;
+  const $ = id => document.getElementById(id);
+  if ($('_honey').value) return;
+  const button = $('formSubmit');
+  button.disabled = true;
+  button.textContent = 'Enviant…';
+  $('formError').hidden = true;
+  try {
+    const res = await fetch('https://formsubmit.co/ajax/info@rutex.es', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        _subject: "BATEX · Sol·licitud d'informació – " + $('escola_nom').value,
+        _template: 'table',
+        _replyto: $('email').value,
+        'Nom i cognoms': $('nom').value,
+        'Escola': $('escola_nom').value,
+        'Correu electrònic': $('email').value,
+        'Alumnes': $('alumnes').value || '—',
+        'Missatge': $('missatge').value || '—'
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || String(data.success) !== 'true') throw new Error(data.message || res.status);
+    $('contactForm').hidden = true;
+    $('formSuccess').hidden = false;
+  } catch (err) {
+    $('formError').hidden = false;
+    button.disabled = false;
+    button.textContent = 'Enviar sol·licitud';
+  }
 }
 
 // Smooth scroll for nav links
